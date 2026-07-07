@@ -1,27 +1,29 @@
-const fs = require('fs');
-const path = require('path');
-const { marked } = require('marked');
+const fs = require("fs");
+const path = require("path");
+const { marked } = require("marked");
 
 // 1. Default configuration
 let config = {
   title: "What I'm Doing",
-  subtitle_es: "Bitácora diaria de aprendizaje, proyectos y desarrollo",
-  subtitle_en: "Daily log of learning, projects, and development",
-  author: "Jaime González Herráiz",
-  description_es: "Hola, soy Jaime González Herráiz. Aquí registro lo que voy haciendo día a día en mis proyectos y aprendizaje.",
-  description_en: "Hello, I am Jaime González Herráiz. Here I log what I'm doing day to day in my projects and learning.",
+  subtitle_es: "Log diario",
+  subtitle_en: "Daily log",
+  author: "JaimeGH",
+  description_es:
+    "Hola, soy Jaimegh. En esta pagina puedes ver qué estoy haciendo cada día, relacionado con la informática",
+  description_en:
+    "Hi, I'm Jaimegh. On this page, you can see what I'm doing each day in the field of computing.",
   links: {
     github: "https://github.com/jaimegh-es",
     linkedin: "https://es.linkedin.com/in/jaimegonzalezherraiz",
-    email: "contacto@inled.es"
-  }
+    email: "hi@inled.es",
+  },
 };
 
 // 2. Load configuration if exists
-const configPath = path.join(__dirname, 'config.json');
+const configPath = path.join(__dirname, "config.json");
 if (fs.existsSync(configPath)) {
   try {
-    const loadedConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const loadedConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
     config = { ...config, ...loadedConfig };
     config.links = { ...config.links, ...(loadedConfig.links || {}) };
   } catch (err) {
@@ -30,53 +32,54 @@ if (fs.existsSync(configPath)) {
 }
 
 // 3. Setup folders
-const entriesDir = path.join(__dirname, 'entries');
+const entriesDir = path.join(__dirname, "entries");
 if (!fs.existsSync(entriesDir)) {
   fs.mkdirSync(entriesDir);
 }
 
 // 4. Gather markdown files
-const files = fs.readdirSync(entriesDir)
-  .filter(file => file.endsWith('.md'))
-  .map(file => path.join(entriesDir, file));
+const files = fs
+  .readdirSync(entriesDir)
+  .filter((file) => file.endsWith(".md"))
+  .map((file) => path.join(entriesDir, file));
 
 const entriesMap = {};
 
 // 5. Parse files
-files.forEach(filePath => {
-  const content = fs.readFileSync(filePath, 'utf8');
+files.forEach((filePath) => {
+  const content = fs.readFileSync(filePath, "utf8");
   const lines = content.split(/\r?\n/);
-  
+
   // fallback date is file's modification date (YYYY-MM-DD)
   const stats = fs.statSync(filePath);
-  const mtimeDate = stats.mtime.toISOString().split('T')[0];
-  
+  const mtimeDate = stats.mtime.toISOString().split("T")[0];
+
   // check if filename itself has a date prefix
   const fileName = path.basename(filePath);
   const fileDateMatch = fileName.match(/^(\d{4}[-/]\d{2}[-/]\d{2})/);
-  
+
   let currentDate = null;
   if (fileDateMatch) {
-    currentDate = fileDateMatch[1].replace(/\//g, '-');
+    currentDate = fileDateMatch[1].replace(/\//g, "-");
   }
-  
+
   let currentLines = [];
-  
-  lines.forEach(line => {
+
+  lines.forEach((line) => {
     // Matches headers like: ## 2026-07-07 or ### 2026-07-07 or ##2026-07-07
     const dateMatch = line.match(/^#{2,3}\s*(\d{4}[-/]\d{2}[-/]\d{2})\b/);
-    
+
     if (dateMatch) {
       // Save current accumulated lines for the previous date
       if (currentDate && currentLines.length > 0) {
         if (!entriesMap[currentDate]) entriesMap[currentDate] = [];
         entriesMap[currentDate] = entriesMap[currentDate].concat(currentLines);
       }
-      currentDate = dateMatch[1].replace(/\//g, '-');
+      currentDate = dateMatch[1].replace(/\//g, "-");
       currentLines = [];
     } else {
       // If we don't have a date yet and we hit content, fallback to mtime
-      if (!currentDate && line.trim() !== '') {
+      if (!currentDate && line.trim() !== "") {
         currentDate = mtimeDate;
       }
       if (currentDate) {
@@ -84,7 +87,7 @@ files.forEach(filePath => {
       }
     }
   });
-  
+
   // Save last section
   if (currentDate && currentLines.length > 0) {
     if (!entriesMap[currentDate]) entriesMap[currentDate] = [];
@@ -95,42 +98,54 @@ files.forEach(filePath => {
 // 6. Sort entries and parse Markdown (detecting language dividers)
 const sortedDates = Object.keys(entriesMap).sort((a, b) => b.localeCompare(a));
 
-const renderedEntries = sortedDates.map(dateStr => {
+const renderedEntries = sortedDates.map((dateStr) => {
   const lines = entriesMap[dateStr];
-  const rawText = lines.join('\n');
-  
+  const rawText = lines.join("\n");
+
   // Split by English version divider
   const langParts = rawText.split(/---en---|--- en ---|<!--\s*en\s*-->/i);
-  const esContent = langParts[0] ? langParts[0].trim() : '';
-  const enContent = langParts[1] ? langParts[1].trim() : '';
-  
+  const esContent = langParts[0] ? langParts[0].trim() : "";
+  const enContent = langParts[1] ? langParts[1].trim() : "";
+
   const htmlES = marked.parse(esContent);
   const htmlEN = enContent ? marked.parse(enContent) : htmlES; // Fallback to Spanish if no English version
-  
+
   // Format Date to Spanish & English
-  const parts = dateStr.split('-');
+  const parts = dateStr.split("-");
   const year = parseInt(parts[0], 10);
   const month = parseInt(parts[1], 10) - 1;
   const day = parseInt(parts[2], 10);
-  
+
   const dateObj = new Date(year, month, day, 12, 0, 0);
-  
+
   // Spanish date: e.g. "Martes, 7 de julio de 2026"
-  const optionsES = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-  const formattedDateES = dateObj.toLocaleDateString('es-ES', optionsES);
-  const displayDateES = formattedDateES.charAt(0).toUpperCase() + formattedDateES.slice(1);
+  const optionsES = {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  };
+  const formattedDateES = dateObj.toLocaleDateString("es-ES", optionsES);
+  const displayDateES =
+    formattedDateES.charAt(0).toUpperCase() + formattedDateES.slice(1);
 
   // English date: e.g. "Tuesday, July 7, 2026"
-  const optionsEN = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-  const formattedDateEN = dateObj.toLocaleDateString('en-US', optionsEN);
-  const displayDateEN = formattedDateEN.charAt(0).toUpperCase() + formattedDateEN.slice(1);
-  
+  const optionsEN = {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  };
+  const formattedDateEN = dateObj.toLocaleDateString("en-US", optionsEN);
+  const displayDateEN =
+    formattedDateEN.charAt(0).toUpperCase() + formattedDateEN.slice(1);
+
   return {
     date: dateStr,
     displayDateES: displayDateES,
     displayDateEN: displayDateEN,
     htmlES: htmlES,
-    htmlEN: htmlEN
+    htmlEN: htmlEN,
   };
 });
 
@@ -143,17 +158,17 @@ const htmlTemplate = `<!DOCTYPE html>
   <title>${config.title} | ${config.author}</title>
   <meta name="description" content="${config.description_es}">
   <meta name="author" content="${config.author}">
-  
+
   <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="${config.title} | ${config.author}">
   <meta property="og:description" content="${config.description_es}">
-  
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&display=swap" rel="stylesheet">
-  
+
   <style>
     * {
       margin: 0;
@@ -423,7 +438,7 @@ const htmlTemplate = `<!DOCTYPE html>
     .timeline-card:hover {
       transform: translateY(-6px);
       border-color: var(--border-hover);
-      box-shadow: 
+      box-shadow:
         0 15px 40px rgba(0, 0, 0, 0.6),
         0 0 30px rgba(255, 255, 255, 0.05),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -877,16 +892,24 @@ const htmlTemplate = `<!DOCTYPE html>
         <button id="email-trigger" class="nav-btn" aria-label="Contacto por Email">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
         </button>
-        ${config.links.linkedin ? `
+        ${
+          config.links.linkedin
+            ? `
         <a href="${config.links.linkedin}" target="_blank" rel="noopener noreferrer" class="nav-btn" aria-label="LinkedIn">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-linkedin"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
         </a>
-        ` : ''}
-        ${config.links.github ? `
+        `
+            : ""
+        }
+        ${
+          config.links.github
+            ? `
         <a href="${config.links.github}" target="_blank" rel="noopener noreferrer" class="nav-btn" aria-label="GitHub">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
         </a>
-        ` : ''}
+        `
+            : ""
+        }
       </nav>
     </div>
   </header>
@@ -900,7 +923,11 @@ const htmlTemplate = `<!DOCTYPE html>
 
   <!-- Timeline Content -->
   <main class="timeline">
-    ${renderedEntries.length > 0 ? renderedEntries.map(entry => `
+    ${
+      renderedEntries.length > 0
+        ? renderedEntries
+            .map(
+              (entry) => `
     <div class="timeline-item">
       <div class="timeline-marker"></div>
       <article class="timeline-card">
@@ -919,7 +946,10 @@ const htmlTemplate = `<!DOCTYPE html>
         </div>
       </article>
     </div>
-    `).join('') : `
+    `,
+            )
+            .join("")
+        : `
     <div class="empty-state lang-es">
       <p>Aún no hay entradas registradas.</p>
       <p style="font-size: 0.95rem; margin-top: 0.5rem; color: rgba(255,255,255,0.4);">
@@ -932,7 +962,8 @@ const htmlTemplate = `<!DOCTYPE html>
         Create <code>.md</code> files in the <code>entries/</code> folder with <code>## YYYY-MM-DD</code> format to start.
       </p>
     </div>
-    `}
+    `
+    }
   </main>
 
   <!-- Footer -->
@@ -953,7 +984,7 @@ const htmlTemplate = `<!DOCTYPE html>
       <button id="close-popup" class="close-btn" aria-label="Cerrar">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
-      
+
       <div class="popup-header">
         <div class="icon-circle">
           <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
@@ -1003,7 +1034,7 @@ const htmlTemplate = `<!DOCTYPE html>
     function setLanguage(lang) {
       currentLang = lang;
       localStorage.setItem('lang', lang);
-      
+
       // Update HTML elements visibility
       document.querySelectorAll('.lang-es').forEach(el => {
         el.style.display = lang === 'es' ? '' : 'none';
@@ -1011,7 +1042,7 @@ const htmlTemplate = `<!DOCTYPE html>
       document.querySelectorAll('.lang-en').forEach(el => {
         el.style.display = lang === 'en' ? '' : 'none';
       });
-      
+
       // Update label in toggle button
       const toggleLabel = document.getElementById('lang-toggle-text');
       if (toggleLabel) {
@@ -1046,7 +1077,7 @@ const htmlTemplate = `<!DOCTYPE html>
 
     emailTrigger?.addEventListener('click', togglePopup);
     closePopup?.addEventListener('click', togglePopup);
-    
+
     emailPopup?.addEventListener('click', (e) => {
       if (e.target === emailPopup) togglePopup();
     });
@@ -1066,12 +1097,16 @@ const htmlTemplate = `<!DOCTYPE html>
 </html>`;
 
 // 8. Write the HTML output
-const distDir = path.join(__dirname, 'dist');
+const distDir = path.join(__dirname, "dist");
 if (!fs.existsSync(distDir)) {
   fs.mkdirSync(distDir);
 }
-const outputPath = path.join(distDir, 'index.html');
-fs.writeFileSync(outputPath, htmlTemplate, 'utf8');
+const outputPath = path.join(distDir, "index.html");
+fs.writeFileSync(outputPath, htmlTemplate, "utf8");
 
-console.log(`\x1b[32m✔ ¡Éxito! Archivo HTML estático generado en: ${outputPath}\x1b[0m`);
-console.log(`\x1b[36mℹ Total de fechas procesadas: ${renderedEntries.length}\x1b[0m`);
+console.log(
+  `\x1b[32m✔ ¡Éxito! Archivo HTML estático generado en: ${outputPath}\x1b[0m`,
+);
+console.log(
+  `\x1b[36mℹ Total de fechas procesadas: ${renderedEntries.length}\x1b[0m`,
+);
