@@ -1,0 +1,13 @@
+{
+  "title": "What I'm Doing",
+  "subtitle_es": "Bitácora diaria de aprendizaje, proyectos y desarrollo",
+  "subtitle_en": "Daily log of learning, projects, and development",
+  "author": "Jaime González Herráiz",
+  "description_es": "Hola, soy Jaime González Herráiz. Aquí registro lo que voy haciendo día a día en mis proyectos y aprendizaje.",
+  "description_en": "Hello, I am Jaime González Herráiz. Here I log what I'm doing day to day in my projects and learning.",
+  "links": {
+    "github": "https://github.com/jaimegh-es",
+    "linkedin": "https://es.linkedin.com/in/jaimegonzalezherraiz",
+    "email": "contacto@inled.es"
+  }
+}

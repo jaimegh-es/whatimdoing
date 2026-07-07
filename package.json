@@ -1,0 +1,21 @@
+{
+  "name": "whatimdoing",
+  "version": "1.0.0",
+  "description": "Generador de blog diario estático inspirado en jaimegh.com",
+  "main": "build.js",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "keywords": [
+    "static",
+    "generator",
+    "markdown",
+    "diary",
+    "timeline"
+  ],
+  "author": "Jaime",
+  "license": "MIT",
+  "dependencies": {
+    "marked": "^12.0.0"
+  }
+}
